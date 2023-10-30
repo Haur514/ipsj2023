@@ -1,0 +1,53 @@
+version: '3.9'
+
+services:
+  fonts:
+    image: alpine
+    volumes:
+      - fonts:/usr/local/share/fonts
+      - fonts:/usr/share/fonts
+      - fonts:/var/cache/fontconfig
+    command: >
+      /bin/sh -c '
+      apk update &&
+      apk add --no-cache curl fontconfig &&
+      curl -O https://moji.or.jp/wp-content/ipafont/IPAexfont/IPAexfont00301.zip &&
+      mkdir -p /usr/share/fonts/ipa &&
+      unzip -o -d /usr/share/fonts/ipa/ IPAexfont00301.zip "*.ttf"
+      '
+
+  app:
+    image: python:3.10-bookworm
+    working_dir: /app/
+    depends_on:
+      fonts:
+        condition: service_completed_successfully
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /app/.env
+      - type: bind
+        source: ./docker-compose.yml
+        target: /app/docker-compose.yml
+      - type: bind
+        source: ./main.py
+        target: /app/main.py
+      - type: bind
+        source: ./requirements.txt
+        target: /app/requirements.txt
+      - type: bind
+        source: ./data/
+        target: /app/data/
+      - type: bind
+        source: ./result.txt
+        target: /app/result.txt
+      - fonts:/usr/local/share/fonts
+      - fonts:/usr/share/fonts
+      - fonts:/var/cache/fontconfig
+    command: >
+      bash -c "pip install --no-cache-dir -r requirements.txt 
+      && pip install -U kaleido
+      && python3 main.py > result.txt"
+
+volumes:
+  fonts:
